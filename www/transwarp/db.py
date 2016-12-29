@@ -39,7 +39,7 @@ class _LasyConnection(object):
             logging.info('open connection <%s>..' % hex(id(connection)))
             self.connection = connection
         return self.connection.cursor()
-    
+
     def commit(self):
         self.connection.commit()
 
@@ -60,7 +60,7 @@ class _DbCtx(threading.local):
 
     def is_init(self):
         return not self.connection is None
-    
+
     def init(self):
         logging.info('open lazy connection...')
         self.connection = _LasyConnection()
@@ -77,13 +77,21 @@ _db_ctx = _DbCtx()
 
 class _ConnectionCtx(object):
     def __enter__(self):
-        pass
+        global _db_ctx
+        self.should_cleanup = False
+        if not _db_ctx.is_init():
+            _db_ctx.init()
+            self.should_cleanup = True
+        return self
 
-    def __exit__(self):
+    def __exit__(self, exctype, excvalue, traceback):
+        global _db_ctx
+        if self.should_cleanup:
+            _db_ctx.cleanup()
         pass
 
 def connection():
-    pass
+    return _ConnectionCtx()
 
 def with_connection(func):
     @functools.wraps(func)
